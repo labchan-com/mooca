@@ -8,22 +8,20 @@
 
 #include <string>
 #include<functional>
-#include "mooca_status.h"
+#include "mooca_status.hpp"
 
 namespace mooca{
 
 typedef struct File{
-    std::string url;
-    
-    long size;
+    size_t size; //bytes
     double remaining_time;
     double progress;
-
 } File;
+
 
 class BaseClient{
     protected:
-        std::function<void(Status status, std::shared_ptr<File> file)> call_back;
+        std::function<void(Status status, File file)> call_back;
     public: 
         virtual bool NotifyMe(Status status) = 0;
         virtual bool NotifyStart() = 0;
@@ -31,7 +29,7 @@ class BaseClient{
         virtual bool NotifySume() = 0;
         virtual bool NotifyResume() = 0;
 
-        virtual bool SetNotifyCallback(std::function<void(Status status,  std::shared_ptr<File> file)> call_back){
+        virtual bool SetNotifyCallback(std::function<void(Status status,  File file)> call_back){
                 this->call_back = call_back;
                 return true;
         }

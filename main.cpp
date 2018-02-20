@@ -7,7 +7,7 @@
 //
 
 #include <iostream>
-#include "mooca_status.h"
+#include "mooca_status.hpp"
 
 int main(int argc, const char * argv[]) {
     // insert code here...
