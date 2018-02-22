@@ -1,3 +1,6 @@
+#ifndef __MOOCA_STATUS_HPP_
+#define __MOOCA_STATUS_HPP_
+
 //
 //  mooca_status.h
 //  mooca
@@ -16,6 +19,9 @@ enum class Status{
    REMAINING_TIME,  //剩余时间
    DOWNLOAD_SIZE,   //已经下载的文件大小
    ALL,             //所有的数据
+   DOWNLOAD_FAILED, 
 };
 
 
+
+#endif

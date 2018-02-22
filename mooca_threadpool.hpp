@@ -18,6 +18,7 @@
 #include <queue>
 #include <vector>
 #include <thread>
+#include <utility>
 
 namespace mooca {
 	class ThreadPool {
@@ -66,7 +67,7 @@ public:
 		template <typename F, typename... Args> 
         void ThreadPool::enqueue( F && f, Args &&... args )
 		{
-			auto task = std::bind( std::move<F>( f ), std::move<Args>( args ) ... );
+			auto task = std::bind( std::move( f ), std::move<Args>( args ) ... );
 			{
 				std::unique_lock<std::mutex> lock( this->queue_mutex );
 				if (stop)

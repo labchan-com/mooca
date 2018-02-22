@@ -1,3 +1,5 @@
+#ifndef __MOOCA_HTTP_HPP__
+#define __MOOCA_HTTP_HPP__
 //
 //  mooca_http.h
 //  mooca
@@ -54,3 +56,6 @@ static size_t writeFunc (void *ptr, size_t size, size_t nmemb, void *userdata);
 
 
 }
+
+
+#endif

@@ -4,24 +4,21 @@
 #include "mooca_http.hpp"
 #include "mooca_status.hpp"
 #include "mooca_threadpool.hpp"
-#include "mooca_http_helper.hpp"
+#include <cstdlib>
 
 namespace mooca {
 
-//    class HttpClient public BaseClient{
-//        private:
- //       public:
-//            HttpClient();
-//            HttpClient(std::string url,int thread_num =1);
-//            ~HttpClient();
-//    }
-//
-
 size_t writeFunc (void *ptr, size_t size, size_t nmemb, void *userdata)  
 {  
+    char *tmp = (char*)malloc(size*nmemb+1);
+    memcpy(tmp,ptr,size*nmemb);
+    *(tmp+size*nmemb+1)='\0';
+    std::cout << tmp << std::endl;
+    free(tmp);
+    std::cout << "Write ?" << std::endl;
     BlockNode  *node = (BlockNode *) userdata;  
     std::lock_guard<std::mutex> lock(node->cl->mutex_io);
-    if (node->start + size * nmemb <= node->end)  
+   if (node->start + size * nmemb <= node->end)  
     {  
         node->fp->seekp(node->start,std::ios::beg);
         node->fp->write ((char*)ptr, (size*nmemb));  
@@ -32,7 +29,7 @@ size_t writeFunc (void *ptr, size_t size, size_t nmemb, void *userdata)
         node->fp->seekp(node->start,std::ios::beg);
         node->fp->write((char*)ptr,node->end - node->start + 1);
         node->start = node->end;  
-    }  
+    } 
     return size*nmemb;  
 }  
 
@@ -42,6 +39,9 @@ HttpClient::HttpClient(std::string url,std::ofstream *fp,size_t thread_num){
     this->url = url;
     this->thread_num = thread_num;
     this->file_ptr = new File;
+    file_ptr->size=0;
+    file_ptr->remaining_time=0;
+    file_ptr->progress=0;
     worker_ptr = new ThreadPool(thread_num+2);
     this->fp = fp;
 }
@@ -61,12 +61,19 @@ void HttpClient::sync_http_file_size(){
 }
 
 bool HttpClient::NotifyStart(){
+    std::cout << this->is_start << std::endl;
     if(!(this->is_start) ){
+
+        std::cout << this->file_ptr->size << std::endl;
         if(0 == this->file_ptr->size){
+            
+            std::cout << "start ?"<<std::endl;
             this->sync_http_file_size();
             //分大小 启动各种下载线程
+            std::cout<<" Sync ? " << std::endl;
             size_t block_size = this->file_ptr->size / this->thread_num;
             for(int i=0; i<=this->thread_num; i++){
+                std::cout << "block" <<std::endl;
                 BlockNode* tmp = new BlockNode;
                 if(i<(this->thread_num-1)){
                     tmp->start = i*block_size;
@@ -78,21 +85,35 @@ bool HttpClient::NotifyStart(){
                         tmp->end = this->file_ptr->size;
                     }
                 }
+                char range[64] = { 0 };
+		        snprintf (range, sizeof (range), "%ld-%ld", tmp->start, tmp->end);
                 CURL* curl = curl_easy_init();
+                std::cout << url <<std::endl;
                 curl_easy_setopt (curl, CURLOPT_URL, url.c_str ());
-                curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, writeFunc);
+                curl_easy_setopt (curl, CURLOPT_WRITEDATA,(void*)tmp);
+                //curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, writeFunc);
+                curl_easy_setopt (curl, CURLOPT_RANGE, range);
                 tmp->curl = curl;
                 tmp->fp = this->fp;
                  
                 this->blocks.push_back(tmp);
-                this->worker_ptr->enqueue( [this,tmp](){
-                   //do something 
-                   CURL *curl = tmp->curl;
-                   //wait start
-                   CURLcode code;
-                   code = curl_easy_perform(curl);
+                this->worker_ptr->enqueue( [this,tmp]{
+                   std::cout << tmp->start << "  -------------------------- " << tmp->end << std::endl;
+                   std::cout <<"crash start" <<std::endl;
+                   CURLcode code = CURLcode(0);
+                   code = curl_easy_perform(tmp->curl);
+                   std::cout << "crash end" << std::endl;
+                   std::cout << "-----------------" << code << "-------------" << std::endl;
                    if(code != CURLE_OK){
                         //notify download failed
+                   std::cout << "what ?" << std::endl;
+                        File file;
+                        {
+                            std::lock_guard<std::mutex> lock(this->mutex_file);
+                            file = *(this->file_ptr);
+                        }
+                        this->is_start = false;
+                        this->call_back(Status::DOWNLOAD_FAILED,file);
                    }
                 });
             }
